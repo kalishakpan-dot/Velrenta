@@ -1,6 +1,7 @@
 'use client';
 
 // app/page.tsx  (buyer dashboard)
+// Navigation (desktop sidebar + phone bottom bar with "More") comes from BuyerNav.
 
 export const dynamic = 'force-dynamic';
 
@@ -8,32 +9,21 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
   FileText,
-  ShoppingBag,
   CheckCircle,
   Bot,
-  LogOut,
   Users,
   X,
   MapPin,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Plus,
-  Store,
   Repeat,
-  Star,
-  Newspaper,
-  Truck,
-  KeyRound,
-  Bike,
-  Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from './lib/supabaseClient';
 import NotificationBell from './components/NotificationBell';
-import RateSupplier from './components/RateSupplier';
 import TrustCenter from './components/TrustCenter';
+import BuyerNav from './components/BuyerNav';
 
 interface Message {
   id?: string;
@@ -297,7 +287,6 @@ export default function Dashboard() {
   const [buyer, setBuyer] = useState<BuyerProfile | null>(null);
 
   // UI-only state
-  const [collapsed, setCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -714,41 +703,6 @@ export default function Dashboard() {
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  // `short` is the label on the phone tab bar. `desktopOnly` items are hidden there.
-  // `group: 'apps'` items show under the "Apps" heading in the desktop sidebar.
-  const navItems = [
-    { href: '/', label: 'Dashboard', short: 'Home', Icon: ShoppingBag, active: true, desktopOnly: false, group: 'main' },
-    { href: '/marketplace', label: 'Marketplace', short: 'Market', Icon: Store, active: false, desktopOnly: false, group: 'main' },
-    { href: '/rfqs', label: 'RFQs & quotes', short: 'RFQs', Icon: FileText, active: false, desktopOnly: false, group: 'main' },
-    { href: '/pos', label: 'Purchase orders', short: 'Orders', Icon: CheckCircle, active: false, desktopOnly: false, group: 'main' },
-    { href: '/tracking', label: 'Order tracking', short: 'Tracking', Icon: Truck, active: false, desktopOnly: false, group: 'main' },
-    { href: '/insights', label: 'Market insights', short: 'Insights', Icon: Newspaper, active: false, desktopOnly: true, group: 'main' },
-    { href: '/developer', label: 'Developer API', short: 'API', Icon: KeyRound, active: false, desktopOnly: true, group: 'main' },
-    { href: '/sharp', label: 'My Plug', short: 'Plug', Icon: Wrench, active: false, desktopOnly: false, group: 'apps' },
-    { href: '/dispatch', label: 'Errand', short: 'Errand', Icon: Bike, active: false, desktopOnly: false, group: 'apps' },
-  ];
-
-  const mainNav = navItems.filter((i) => i.group === 'main');
-  const appsNav = navItems.filter((i) => i.group === 'apps');
-
-  const renderNavLink = ({ href, label, short, Icon, active, desktopOnly }: (typeof navItems)[number]) => (
-    <Link
-      key={href}
-      href={href}
-      title={collapsed ? label : undefined}
-      aria-current={active ? 'page' : undefined}
-      className={`${desktopOnly ? 'hidden md:flex' : 'flex'} relative flex-1 md:flex-none flex-col md:flex-row items-center justify-center gap-1 md:gap-3 py-2.5 md:py-2 md:px-3 md:rounded-lg text-[10px] md:text-[13px] font-medium transition ${collapsed ? '' : 'md:justify-start'
-        } ${active
-          ? 'text-emerald-400 md:bg-emerald-500/10 md:before:absolute md:before:left-0 md:before:top-2 md:before:bottom-2 md:before:w-0.5 md:before:rounded-full md:before:bg-emerald-400'
-          : 'text-slate-400 hover:text-slate-200 md:hover:bg-slate-800/60'
-        }`}
-    >
-      <Icon className="w-5 h-5 md:w-[15px] md:h-[15px] shrink-0" />
-      <span className="md:hidden">{short}</span>
-      <span className={`hidden ${collapsed ? '' : 'md:inline'}`}>{label}</span>
-    </Link>
-  );
-
   const statCards = [
     { label: 'RFQs', value: stats.activeRfqs, Icon: FileText, href: '/rfqs', tone: 'text-white' },
     { label: 'Purchase orders', value: stats.issuedPos, Icon: CheckCircle, href: '/pos', tone: 'text-emerald-400' },
@@ -757,92 +711,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
-      {/* Sidebar: left rail on desktop, bottom tab bar on mobile */}
-      <aside
-        className={`order-last md:order-first shrink-0 flex md:flex-col bg-slate-900 border-t md:border-t-0 md:border-r border-slate-800 pb-[env(safe-area-inset-bottom)] md:pb-0 md:transition-[width] md:duration-200 ${collapsed ? 'md:w-[76px]' : 'md:w-64'
-          }`}
-      >
-        <div
-          className={`hidden md:flex items-center gap-3 h-16 border-b border-slate-800 shrink-0 ${collapsed ? 'justify-center' : 'px-5'
-            }`}
-        >
-          <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-xl shrink-0">
-            V
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-white leading-tight">Velrenta</p>
-              <p className="text-[11px] text-slate-400 leading-tight">Buyer portal</p>
-            </div>
-          )}
-        </div>
-
-        <nav className="flex flex-1 md:flex-col md:gap-1 md:p-3" aria-label="Main">
-          {mainNav.map(renderNavLink)}
-
-          {/* "Apps" group heading (desktop only; becomes a thin divider when collapsed) */}
-          <div className="hidden md:block mt-4 mb-1 px-3">
-            {collapsed ? (
-              <div className="h-px bg-slate-800" />
-            ) : (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Apps</p>
-            )}
-          </div>
-
-          {appsNav.map(renderNavLink)}
-
-          <button
-            onClick={handleLogout}
-            className="md:hidden flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-400 hover:text-red-400 transition"
-          >
-            <LogOut className="w-5 h-5" />
-            Log out
-          </button>
-        </nav>
-
-        <div className="hidden md:block border-t border-slate-800 p-3 space-y-2 shrink-0">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs text-slate-500 hover:text-slate-200 hover:bg-slate-800/60 transition ${collapsed ? 'justify-center' : ''
-              }`}
-          >
-            {collapsed ? (
-              <ChevronsRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronsLeft className="w-4 h-4" /> Collapse
-              </>
-            )}
-          </button>
-
-          <div
-            className={`rounded-xl bg-slate-800/50 border border-slate-700/50 p-2.5 flex items-center gap-3 ${collapsed ? 'flex-col' : ''
-              }`}
-          >
-            <div
-              title={collapsed ? buyer?.contact_name || undefined : undefined}
-              className="h-9 w-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-xs text-emerald-400 shrink-0"
-            >
-              {buyer?.contact_name?.[0]?.toUpperCase() || 'U'}
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-white truncate">{buyer?.contact_name || user?.email}</p>
-                <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
-              </div>
-            )}
-            <button
-              onClick={handleLogout}
-              title="Log out"
-              aria-label="Log out"
-              className="text-slate-400 hover:text-red-400 p-1 transition shrink-0"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
+      {/* Navigation: left sidebar on desktop, bottom bar + "More" sheet on phones */}
+      <BuyerNav
+        name={buyer?.contact_name || user?.email || ''}
+        email={user?.email || ''}
+        onLogout={handleLogout}
+      />
 
       {/* Main content */}
       <main className="flex-1 min-w-0 h-full overflow-y-auto">
@@ -1013,8 +887,9 @@ export default function Dashboard() {
 
       {/* Embedded Procurement AI Assistant: side panel on xl, full-screen drawer below */}
       <section
-        className={`${chatOpen ? 'fixed inset-0 z-40 flex' : 'hidden'
-          } xl:relative xl:inset-auto xl:z-auto xl:flex xl:h-full w-full xl:w-96 border-l border-slate-800 bg-slate-900 flex-col shrink-0 min-w-0`}
+        className={`${
+          chatOpen ? 'fixed inset-0 z-40 flex' : 'hidden'
+        } xl:relative xl:inset-auto xl:z-auto xl:flex xl:h-full w-full xl:w-96 border-l border-slate-800 bg-slate-900 flex-col shrink-0 min-w-0`}
       >
         <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -1044,10 +919,11 @@ export default function Dashboard() {
               className={`flex min-w-0 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[88%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed break-words [overflow-wrap:anywhere] min-w-0 overflow-hidden ${msg.sender === 'user'
-                  ? 'bg-emerald-500 text-slate-950 font-semibold rounded-br-md'
-                  : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
-                  }`}
+                className={`max-w-[88%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed break-words [overflow-wrap:anywhere] min-w-0 overflow-hidden ${
+                  msg.sender === 'user'
+                    ? 'bg-emerald-500 text-slate-950 font-semibold rounded-br-md'
+                    : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
+                }`}
               >
                 {renderMessageBody(msg.text)}
               </div>
