@@ -61,7 +61,13 @@ export default function LoginPage() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { contact_name: contactName, phone } },
+          options: {
+            data: { contact_name: contactName, phone },
+            // The confirmation link sends the user back to whichever site they signed up on
+            // (https://velrenta.onrender.com in production, http://localhost:3000 locally).
+            // Both must be listed under Supabase > Authentication > URL Configuration > Redirect URLs.
+            emailRedirectTo: `${window.location.origin}/login`,
+          },
         });
         if (error) throw error;
 
