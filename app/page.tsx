@@ -75,6 +75,16 @@ const cleanDisplayText = (text: string | null | undefined): string => {
   return text.replace(/^=+\s*/, '').trim();
 };
 
+// 999 -> "999", 3000 -> "3,000", 12500 -> "12.5K", 2400000 -> "2.4M"
+// Keeps big numbers from overflowing the small stat cards.
+const formatStat = (n: number): string => {
+  if (n < 10000) return n.toLocaleString('en-US');
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(n);
+};
+
 const statusStyle = (status?: string) => {
   const s = (status || 'active').toLowerCase();
   if (['closed', 'cancelled', 'expired'].includes(s)) return 'bg-slate-800 text-slate-400 border-slate-700';
@@ -704,9 +714,9 @@ export default function Dashboard() {
   };
 
   const statCards = [
-    { label: 'RFQs', value: stats.activeRfqs, Icon: FileText, href: '/rfqs', tone: 'text-white' },
-    { label: 'Purchase orders', value: stats.issuedPos, Icon: CheckCircle, href: '/pos', tone: 'text-emerald-400' },
-    { label: 'Suppliers', value: stats.suppliers, Icon: Users, href: '/marketplace' as string | null, tone: 'text-white' },
+    { label: 'RFQs', short: 'RFQs', value: stats.activeRfqs, Icon: FileText, href: '/rfqs', tone: 'text-white' },
+    { label: 'Purchase orders', short: 'Orders', value: stats.issuedPos, Icon: CheckCircle, href: '/pos', tone: 'text-emerald-400' },
+    { label: 'Suppliers', short: 'Suppliers', value: stats.suppliers, Icon: Users, href: '/marketplace' as string | null, tone: 'text-white' },
   ];
 
   return (
@@ -721,42 +731,72 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="flex-1 min-w-0 h-full overflow-y-auto">
         <div className="max-w-4xl mx-auto p-4 md:p-8">
-          <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+          <header className="mb-5 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-white">Welcome back{firstName ? `, ${firstName}` : ''}</h1>
-              <p className="text-slate-400 text-sm mt-1">Track your requests and purchase orders in real time.</p>
+              <p className="text-xs text-slate-400">Welcome back</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white truncate">{firstName || 'Buyer'}</h1>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <NotificationBell />
               <button
                 onClick={startRequest}
-                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition"
+                className="hidden md:flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs transition"
               >
                 <Plus className="w-4 h-4" /> New request
               </button>
             </div>
           </header>
 
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            {statCards.map(({ label, value, Icon, href, tone }) => {
+          {/* Phone: one tap to start a request */}
+          <button
+            onClick={startRequest}
+            className="md:hidden group w-full mb-5 flex items-center gap-3 rounded-2xl border border-slate-800 bg-gradient-to-r from-emerald-500/15 via-slate-900 to-slate-900 p-3 text-left active:scale-[0.99] transition"
+          >
+            <span className="h-10 w-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0">
+              <Bot className="w-5 h-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-white">What do you need today?</span>
+              <span className="block text-xs text-slate-400 truncate">Try: 100 PVC pipes in Lagos</span>
+            </span>
+            <Plus className="w-4 h-4 text-emerald-400 shrink-0" />
+          </button>
+
+          <section className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
+            {statCards.map(({ label, short, value, Icon, href, tone }) => {
               const inner = (
                 <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-400">{label}</p>
-                    <span className="h-8 w-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-emerald-400" />
-                    </span>
+                  <span className="h-8 w-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-emerald-400" />
+                  </span>
+                  <div className="min-w-0">
+                    {dataLoading ? (
+                      <div className="h-6 w-10 rounded-md bg-slate-800 animate-pulse" />
+                    ) : (
+                      <p
+                        title={value.toLocaleString('en-US')}
+                        className={`text-lg sm:text-xl font-bold leading-none tabular-nums truncate ${tone}`}
+                      >
+                        {formatStat(value)}
+                      </p>
+                    )}
+                    <p className="text-[11px] sm:text-xs text-slate-400 mt-1.5 truncate">
+                      <span className="sm:hidden">{short}</span>
+                      <span className="hidden sm:inline">{label}</span>
+                    </p>
                   </div>
-                  {dataLoading ? (
-                    <div className="h-9 w-14 mt-3 rounded-md bg-slate-800 animate-pulse" />
-                  ) : (
-                    <p className={`text-3xl font-bold mt-3 ${tone}`}>{value}</p>
-                  )}
                 </>
               );
-              const cls = 'rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0';
+
+              const cls =
+                'min-w-0 flex flex-col gap-2.5 rounded-2xl border border-slate-800 bg-slate-900 p-3';
+
               return href ? (
-                <Link key={label} href={href} className={`${cls} hover:border-slate-600 transition`}>
+                <Link
+                  key={label}
+                  href={href}
+                  className={`${cls} hover:border-emerald-500/40 active:scale-[0.97] transition`}
+                >
                   {inner}
                 </Link>
               ) : (
@@ -879,7 +919,7 @@ export default function Dashboard() {
         <button
           onClick={startRequest}
           aria-label="Open assistant"
-          className="xl:hidden fixed right-4 bottom-20 md:bottom-6 z-30 h-12 w-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center transition"
+          className="hidden md:flex xl:hidden fixed right-4 bottom-6 z-30 h-12 w-12 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center transition"
         >
           <Bot className="w-5 h-5" />
         </button>
@@ -887,9 +927,8 @@ export default function Dashboard() {
 
       {/* Embedded Procurement AI Assistant: side panel on xl, full-screen drawer below */}
       <section
-        className={`${
-          chatOpen ? 'fixed inset-0 z-40 flex' : 'hidden'
-        } xl:relative xl:inset-auto xl:z-auto xl:flex xl:h-full w-full xl:w-96 border-l border-slate-800 bg-slate-900 flex-col shrink-0 min-w-0`}
+        className={`${chatOpen ? 'fixed inset-0 z-40 flex' : 'hidden'
+          } xl:relative xl:inset-auto xl:z-auto xl:flex xl:h-full w-full xl:w-96 border-l border-slate-800 bg-slate-900 flex-col shrink-0 min-w-0`}
       >
         <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -919,11 +958,10 @@ export default function Dashboard() {
               className={`flex min-w-0 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[88%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed break-words [overflow-wrap:anywhere] min-w-0 overflow-hidden ${
-                  msg.sender === 'user'
-                    ? 'bg-emerald-500 text-slate-950 font-semibold rounded-br-md'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
-                }`}
+                className={`max-w-[88%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed break-words [overflow-wrap:anywhere] min-w-0 overflow-hidden ${msg.sender === 'user'
+                  ? 'bg-emerald-500 text-slate-950 font-semibold rounded-br-md'
+                  : 'bg-slate-800 text-slate-200 border border-slate-700/50 rounded-bl-md'
+                  }`}
               >
                 {renderMessageBody(msg.text)}
               </div>
