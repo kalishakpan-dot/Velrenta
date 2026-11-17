@@ -677,7 +677,7 @@ export default function Dashboard() {
 
   if (!ready) {
     return (
-      <div className="flex h-screen w-screen bg-slate-950 items-center justify-center">
+      <div className="flex h-dvh w-full bg-slate-950 items-center justify-center">
         <div className="text-slate-400 text-sm">Loading procurement portal...</div>
       </div>
     );
@@ -710,7 +710,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className="flex flex-col md:flex-row h-dvh w-full bg-slate-950 text-slate-100 font-sans overflow-hidden">
       {/* Navigation: left sidebar on desktop, bottom bar + "More" sheet on phones */}
       <BuyerNav
         name={buyer?.contact_name || user?.email || ''}

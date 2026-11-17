@@ -97,7 +97,7 @@ export default function BuyerShell({ title, subtitle, children }: Props) {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+  <div className="flex flex-col md:flex-row h-dvh w-full bg-slate-950 text-slate-100 font-sans overflow-hidden">
       <BuyerNav name={profile?.name || ''} email={profile?.email || ''} onLogout={handleLogout} />
 
       <main className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto">

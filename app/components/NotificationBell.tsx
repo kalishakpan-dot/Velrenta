@@ -2,7 +2,18 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Bell, CheckCircle2, XCircle, Volume2, VolumeX, Megaphone, Newspaper, Tag, AlertTriangle } from 'lucide-react';
+import {
+  Bell,
+  CheckCircle2,
+  XCircle,
+  Volume2,
+  VolumeX,
+  Megaphone,
+  Newspaper,
+  Tag,
+  AlertTriangle,
+  X,
+} from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 interface Notice {
@@ -130,7 +141,7 @@ export default function NotificationBell() {
       .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     if (error) console.error('Notifications fetch error:', error);
     if (data) setItems(data as Notice[]);
   }, []);
@@ -174,6 +185,16 @@ export default function NotificationBell() {
     };
   }, [userId, beep, flashTitle]);
 
+  // Close the panel with the Escape key.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const unread = items.filter((i) => !i.read).length;
 
   const markAllRead = async () => {
@@ -203,6 +224,7 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         aria-label="Notifications"
+        aria-expanded={open}
         className="relative h-10 w-10 rounded-xl border border-slate-800 bg-slate-900 hover:border-slate-600 flex items-center justify-center text-slate-300 transition"
       >
         <Bell className="w-4 h-4" />
@@ -214,48 +236,108 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
-          <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
-            <span className="text-sm font-bold text-white">Notifications</span>
-            <button
-              onClick={toggleSound}
-              aria-pressed={soundOn}
-              aria-label={soundOn ? 'Turn notification sound off' : 'Turn notification sound on'}
-              title={soundOn ? 'Sound on' : 'Sound off'}
-              className={`inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full border px-2.5 py-1 transition ${soundOn
-                ? 'border-emerald-500/40 text-emerald-400 hover:border-emerald-400'
-                : 'border-slate-700 text-slate-500 hover:border-slate-500'
-                }`}
+        <>
+          {/* Desktop only: click outside to close. On phones the panel is full screen. */}
+          <div className="hidden sm:block fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden="true" />
+
+          {/*
+            Phones (< sm): full-screen page. Header stays fixed at the top, the list scrolls.
+            sm and up: dropdown anchored under the bell, right-aligned.
+          */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notifications"
+            className="
+              fixed inset-0 z-50 flex flex-col bg-slate-900
+              sm:absolute sm:inset-auto sm:right-0 sm:top-12 sm:z-40 sm:w-80
+              sm:rounded-xl sm:border sm:border-slate-700 sm:shadow-xl sm:overflow-hidden
+            "
+          >
+            {/* Header */}
+            <div
+              className="
+                shrink-0 flex items-center justify-between gap-3 border-b border-slate-800
+                px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]
+                sm:py-3
+              "
             >
-              {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-              {soundOn ? 'Sound on' : 'Sound off'}
-            </button>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base sm:text-sm font-bold text-white">Notifications</span>
+                {items.length > 0 && (
+                  <span className="text-[11px] text-slate-500">{items.length}</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={toggleSound}
+                  aria-pressed={soundOn}
+                  aria-label={soundOn ? 'Turn notification sound off' : 'Turn notification sound on'}
+                  title={soundOn ? 'Sound on' : 'Sound off'}
+                  className={`inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full border px-2.5 py-1 transition ${
+                    soundOn
+                      ? 'border-emerald-500/40 text-emerald-400 hover:border-emerald-400'
+                      : 'border-slate-700 text-slate-500 hover:border-slate-500'
+                  }`}
+                >
+                  {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  {soundOn ? 'Sound on' : 'Sound off'}
+                </button>
+
+                {/* Close button (phones only) */}
+                <button
+                  onClick={() => setOpen(false)}
+                  aria-label="Close notifications"
+                  className="sm:hidden h-9 w-9 -mr-1 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            {items.length === 0 ? (
+              <div className="flex-1 sm:flex-none flex flex-col items-center justify-center gap-2 p-6 text-center">
+                <Bell className="w-6 h-6 text-slate-600" />
+                <p className="text-xs text-slate-500">Nothing yet.</p>
+              </div>
+            ) : (
+              <ul
+                className="
+                  flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-slate-800/70
+                  pb-[env(safe-area-inset-bottom)]
+                  sm:flex-none sm:max-h-80 sm:pb-0
+                "
+              >
+                {items.map((n) => (
+                  <li key={n.id}>
+                    <Link
+                      href={n.link || (n.type.startsWith('broadcast') ? '/' : '/pos')}
+                      onClick={() => setOpen(false)}
+                      className="flex gap-3 px-4 py-3.5 sm:py-3 hover:bg-slate-800/40 active:bg-slate-800/60 transition"
+                    >
+                      {Icon(n.type)}
+                      <div className="min-w-0">
+                        <p className="text-sm sm:text-xs font-semibold text-white">{n.title}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 break-words">{n.message}</p>
+                        <p className="text-[10px] text-slate-600 mt-1">
+                          {new Date(n.created_at).toLocaleString('en-NG')}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {items.length === 0 ? (
-            <p className="p-6 text-center text-xs text-slate-500">Nothing yet.</p>
-          ) : (
-            <ul className="max-h-80 overflow-y-auto divide-y divide-slate-800/70">
-              {items.map((n) => (
-                <li key={n.id}>
-                  <Link href={n.link || (n.type.startsWith('broadcast') ? '/' : '/pos')} onClick={() => setOpen(false)} className="flex gap-2.5 px-4 py-3 hover:bg-slate-800/40 transition">
-                    {Icon(n.type)}
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white">{n.title}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 break-words">{n.message}</p>
-                      <p className="text-[10px] text-slate-600 mt-1">{new Date(n.created_at).toLocaleString('en-NG')}</p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        </>
       )}
 
       {toast && (
         <div
           role="status"
-          className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[calc(100vw-2rem)] flex gap-2.5 rounded-lg border border-emerald-500/40 bg-slate-900 px-4 py-3 shadow-lg"
+          className="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 z-[60] max-w-sm w-[calc(100vw-2rem)] flex gap-2.5 rounded-lg border border-emerald-500/40 bg-slate-900 px-4 py-3 shadow-lg"
         >
           {Icon(toast.type)}
           <div className="min-w-0">
