@@ -575,7 +575,7 @@ export default function Dashboard() {
   // The reply is always saved to conversation_messages by n8n. If the webhook response body
   // is empty or unreadable, wait for that saved row (up to about 75 seconds) and show it.
   const waitForAssistantReply = async (buyerId: string, sinceIso: string): Promise<boolean> => {
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 80; i++) {
       const { data } = await supabase
         .from('conversation_messages')
         .select('id')
@@ -666,15 +666,27 @@ export default function Dashboard() {
       // Show exactly what was saved (this includes the supplier recommendation).
       if (chatBuyerId) setTimeout(() => fetchChatHistory(chatBuyerId), 1200);
       setTimeout(() => fetchData(), 1000);
-    } catch (error) {
+      } catch (error) {
       console.error('Webhook error:', error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'agent',
-          text: 'Connecting to procurement engine... (Check console/n8n execution status)',
-        },
-      ]);
+      // The request can be dropped (slow run, flaky mobile network, gateway timeout) even though
+      // n8n keeps working and saves the reply. Wait for the saved reply instead of showing an error.
+      let recovered = false;
+      if (chatBuyerId) {
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'agent', text: 'Still working on your request. This can take a minute or two...' },
+        ]);
+        recovered = await waitForAssistantReply(chatBuyerId, sentAt);
+      }
+      if (!recovered) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'agent',
+            text: 'This is taking longer than usual. Your request was received and the reply will appear here when it is ready. You can also refresh the page in a minute.',
+          },
+        ]);
+      }
     } finally {
       setIsLoading(false);
     }
