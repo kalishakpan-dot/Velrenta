@@ -82,10 +82,10 @@ export default function WaitlistPage() {
                     <Image
                         src="/logoo.png"
                         alt="Velrenta Logo"
-                        width={40}
-                        height={40}
+                        width={56}
+                        height={56}
                         priority
-                        className="h-10 w-10 rounded-xl object-contain"
+                        className="h-14 w-14 object-contain"
                     />
                     <span className="text-xl font-bold tracking-wide">Velrenta</span>
                 </div>
@@ -139,8 +139,8 @@ export default function WaitlistPage() {
                                                 aria-pressed={on}
                                                 onClick={() => setRole(key)}
                                                 className={`text-left rounded-xl border px-3 py-2.5 transition ${on
-                                                        ? 'border-emerald-500 bg-emerald-500/10'
-                                                        : 'border-slate-800 bg-slate-900 hover:border-slate-600'
+                                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                                    : 'border-slate-800 bg-slate-900 hover:border-slate-600'
                                                     }`}
                                             >
                                                 <span className="flex items-center gap-2 text-sm font-semibold">
